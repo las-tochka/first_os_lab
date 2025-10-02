@@ -20,7 +20,6 @@ int main(int argc, char **argv) {
     char buf[4096];
     ssize_t bytes;
 
-    // Read numbers line by line from stdin
     char line[256];
     uint32_t linelen = 0;
     while ((bytes = read(STDIN_FILENO, buf, sizeof(buf))) > 0) {
@@ -28,7 +27,6 @@ int main(int argc, char **argv) {
             char c = buf[i];
             if (c == '\n') {
                 line[linelen] = '\0';
-                // Parse integer
                 char *endptr = NULL;
                 long long value = strtoll(line, &endptr, 10);
                 if (endptr != line) {
@@ -48,14 +46,12 @@ int main(int argc, char **argv) {
                 if (linelen + 1 < sizeof(line)) {
                     line[linelen++] = c;
                 } else {
-                    // Line too long, reset to avoid overflow
                     linelen = 0;
                 }
             }
         }
     }
 
-    // If the last line doesn't end with newline, process it as well
     if (linelen > 0) {
         line[linelen] = '\0';
         char *endptr = NULL;

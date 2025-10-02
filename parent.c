@@ -13,10 +13,8 @@ static char SERVER_PROGRAM_NAME[] = "child";
 
 int main(int argc, char **argv) {
 
-	// NOTE: Get full path to the directory, where program resides
 	char progpath[1024];
 	{
-		// NOTE: Read full program path, including its name
 		ssize_t len = readlink("/proc/self/exe", progpath,
 		                       sizeof(progpath) - 1);
 		if (len == -1) {
@@ -25,39 +23,36 @@ int main(int argc, char **argv) {
 			exit(EXIT_FAILURE);
 		}
 
-		// NOTE: Trim the path to first slash from the end
 		while (progpath[len] != '/')
 			--len;
 
 		progpath[len] = '\0';
 	}
 
-    // NOTE: Open pipes
-    int client_to_server[2]; // AB
+    int client_to_server[2];
     if (pipe(client_to_server) == -1) {
         const char msg[] = "error: failed to create pipe\n";
         write(STDERR_FILENO, msg, sizeof(msg));
         exit(EXIT_FAILURE);
     }
 
-    int server_to_client[2]; // BA
+    int server_to_client[2];
 	if (pipe(server_to_client) == -1) {
 		const char msg[] = "error: failed to create pipe\n";
 		write(STDERR_FILENO, msg, sizeof(msg));
 		exit(EXIT_FAILURE);
 	}
 
-	// NOTE: Spawn a new process
 	const pid_t child = fork();
 
 	switch (child) {
-	case -1: { // NOTE: Kernel fails to create another process
+	case -1: {
 		const char msg[] = "error: failed to spawn new process\n";
 		write(STDERR_FILENO, msg, sizeof(msg));
 		exit(EXIT_FAILURE);
 	} break;
 
-    case 0: { // NOTE: We're a child, child doesn't know its pid after fork
+    case 0: {
 
         close(client_to_server[1]);
         close(server_to_client[0]);
@@ -72,7 +67,6 @@ int main(int argc, char **argv) {
 			char path[1024];
 			snprintf(path, sizeof(path) - 1, "%s/%s", progpath, SERVER_PROGRAM_NAME);
 
-            // NOTE: Start server without extra args; will read filename from stdin
             char *const args[] = {SERVER_PROGRAM_NAME, NULL};
 
 			int32_t status = execv(path, args);
@@ -85,7 +79,7 @@ int main(int argc, char **argv) {
 		}
 	} break;
 
-    default: { // NOTE: We're a parent, parent knows PID of child after fork
+    default: {
 
         close(client_to_server[0]);
         close(server_to_client[1]);
@@ -93,7 +87,6 @@ int main(int argc, char **argv) {
         char buf[4096];
         ssize_t bytes;
 
-        // 1) Read filename from our stdin
         bytes = read(STDIN_FILENO, buf, sizeof(buf) - 1);
         if (bytes <= 0) {
             const char msg[] = "error: failed to read filename from stdin\n";
@@ -104,7 +97,6 @@ int main(int argc, char **argv) {
         char *nl = strchr(buf, '\n');
         if (nl) *nl = '\0';
 
-        // 2) Open file and stream its contents into server stdin
         int fd = open(buf, O_RDONLY);
         if (fd == -1) {
             const char msg[] = "error: failed to open input file\n";
@@ -121,9 +113,8 @@ int main(int argc, char **argv) {
             }
         }
         close(fd);
-        close(client_to_server[1]); // signal EOF to server
+        close(client_to_server[1]);
 
-        // 3) Read server response until EOF and print to stdout
         while ((bytes = read(server_to_client[0], buf, sizeof(buf))) > 0) {
             write(STDOUT_FILENO, buf, bytes);
         }
