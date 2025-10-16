@@ -13,8 +13,10 @@ static char SERVER_PROGRAM_NAME[] = "child";
 
 int main(int argc, char **argv) {
 
+    // получение названия текущего !исполняемого! файла
 	char progpath[1024];
 	{
+        // получение абсолютного пути
 		ssize_t len = readlink("/proc/self/exe", progpath,
 		                       sizeof(progpath) - 1);
 		if (len == -1) {
@@ -23,26 +25,29 @@ int main(int argc, char **argv) {
 			exit(EXIT_FAILURE);
 		}
 
+        // сокращение до названия
 		while (progpath[len] != '/')
 			--len;
 
 		progpath[len] = '\0';
 	}
 
-    int client_to_server[2];
-    if (pipe(client_to_server) == -1) {
+    // открытие каналов для связи parent - child
+    int parent_to_child[2];
+    if (pipe(parent_to_child) == -1) {
         const char msg[] = "error: failed to create pipe\n";
         write(STDERR_FILENO, msg, sizeof(msg));
         exit(EXIT_FAILURE);
     }
 
-    int server_to_client[2];
-	if (pipe(server_to_client) == -1) {
+    int child_to_parent[2];
+	if (pipe(child_to_parent) == -1) {
 		const char msg[] = "error: failed to create pipe\n";
 		write(STDERR_FILENO, msg, sizeof(msg));
 		exit(EXIT_FAILURE);
 	}
 
+    // создание процесса child, поле=учение его process id
 	const pid_t child = fork();
 
 	switch (child) {
@@ -54,14 +59,14 @@ int main(int argc, char **argv) {
 
     case 0: {
 
-        close(client_to_server[1]);
-        close(server_to_client[0]);
+        close(parent_to_child[1]);
+        close(child_to_parent[0]);
 
-        dup2(client_to_server[0], STDIN_FILENO);
-        close(client_to_server[0]);
+        dup2(parent_to_child[0], STDIN_FILENO);
+        close(parent_to_child[0]);
 
-        dup2(server_to_client[1], STDOUT_FILENO);
-		close(server_to_client[1]);
+        dup2(child_to_parent[1], STDOUT_FILENO);
+		close(child_to_parent[1]);
 
 		{
 			char path[1024];
@@ -81,9 +86,10 @@ int main(int argc, char **argv) {
 
     default: {
 
-        close(client_to_server[0]);
-        close(server_to_client[1]);
+        close(parent_to_child[0]);
+        close(child_to_parent[1]);
 
+        // читаем файл и перенаправляем содержимое на pipe
         char buf[4096];
         ssize_t bytes;
 
@@ -105,7 +111,7 @@ int main(int argc, char **argv) {
         }
 
         while ((bytes = read(fd, buf, sizeof(buf))) > 0) {
-            if (write(client_to_server[1], buf, bytes) != bytes) {
+            if (write(parent_to_child[1], buf, bytes) != bytes) {
                 const char msg[] = "error: failed to write to server stdin\n";
                 write(STDERR_FILENO, msg, sizeof(msg) - 1);
                 close(fd);
@@ -113,15 +119,21 @@ int main(int argc, char **argv) {
             }
         }
         close(fd);
-        close(client_to_server[1]);
+        close(parent_to_child[1]);
 
-        while ((bytes = read(server_to_client[0], buf, sizeof(buf))) > 0) {
+        while ((bytes = read(child_to_parent[0], buf, sizeof(buf))) > 0) {
             write(STDOUT_FILENO, buf, bytes);
         }
 
-		close(server_to_client[0]);
+		close(child_to_parent[0]);
 
-		wait(NULL);
+        int status;
+		wait(&status);
+        if (status == -1) {
+			const char msg[] = "Failed to wait for child\n";
+			write(STDERR_FILENO, msg, sizeof(msg));
+			exit(EXIT_FAILURE);
+		}
 	} break;
 	}
 }
