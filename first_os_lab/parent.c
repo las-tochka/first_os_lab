@@ -12,11 +12,8 @@
 static char SERVER_PROGRAM_NAME[] = "child";
 
 int main(int argc, char **argv) {
-
-    // получение названия текущего !исполняемого! файла
 	char progpath[1024];
 	{
-        // получение абсолютного пути
 		ssize_t len = readlink("/proc/self/exe", progpath,
 		                       sizeof(progpath) - 1);
 		if (len == -1) {
@@ -25,14 +22,12 @@ int main(int argc, char **argv) {
 			exit(EXIT_FAILURE);
 		}
 
-        // сокращение до названия
 		while (progpath[len] != '/')
 			--len;
 
 		progpath[len] = '\0';
 	}
 
-    // открытие каналов для связи parent - child
     int parent_to_child[2];
     if (pipe(parent_to_child) == -1) {
         const char msg[] = "error: failed to create pipe\n";
@@ -47,7 +42,6 @@ int main(int argc, char **argv) {
 		exit(EXIT_FAILURE);
 	}
 
-    // создание процесса child, поле=учение его process id
 	const pid_t child = fork();
 
 	switch (child) {
@@ -89,7 +83,6 @@ int main(int argc, char **argv) {
         close(parent_to_child[0]);
         close(child_to_parent[1]);
 
-        // читаем файл и перенаправляем содержимое на pipe
         char buf[4096];
         ssize_t bytes;
 
