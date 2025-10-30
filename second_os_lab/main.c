@@ -6,6 +6,7 @@
 int *array;
 int n;
 int num_threads;
+pthread_barrier_t barrier;
 
 void odd_even_sort_seq(int *arr, int n) {
     int sorted = 0;
@@ -47,9 +48,8 @@ void* thread_func(void* arg) {
             if (array[i] > array[i + 1])
                 swap(&array[i], &array[i + 1]);
         }
-
-        pthread_barrier_wait(&barrier);
     }
+    pthread_barrier_wait(&barrier);
     return NULL;
 }
 
@@ -90,12 +90,10 @@ int main(int argc, char *argv[]) {
     // for (int i = 0; i < n; i++) {
     //     scanf("%d", &array[i]);
     // }
-    int test_array[] = {5, 2, 8, 1, 9, 3, 7, 4, 6, 0};
-    n = 10;
+    printf("Generating array of size %d...\n", n);
     for (int i = 0; i < n; i++) {
-        array[i] = test_array[i];
+        array[i] = rand() % 10000;
     }
-    // После сортировки: {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 
     double start_time, end_time, elapsed_time;
 
@@ -106,7 +104,7 @@ int main(int argc, char *argv[]) {
         elapsed_time = end_time - start_time;
 
         printf("Linear time: %.3f\n", elapsed_time);
-        printArray(array, n);
+        // printArray(array, n);
     } else {
         start_time = get_time_ms();
         odd_even_sort_parallel(array, n, num_threads);
@@ -114,7 +112,7 @@ int main(int argc, char *argv[]) {
         elapsed_time = end_time - start_time;
 
         printf("Paralel time (%d threads): %.3f\n", num_threads, elapsed_time);
-        printArray(array, n);
+        // printArray(array, n);
 
         // Проверка корректности
         char mistake[256] = "";
@@ -123,7 +121,6 @@ int main(int argc, char *argv[]) {
             printf("%s\n", mistake);
         }
     }
-
     free(array);
     return 0;
 }
