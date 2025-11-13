@@ -29,8 +29,6 @@ void odd_even_sort_seq(int *arr, int n) {
     }
 }
 
-pthread_barrier_t barrier;
-
 // структура потока
 typedef struct {
     int id;
