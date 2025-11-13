@@ -80,7 +80,7 @@ int main() {
     char buf[SHM_SIZE - sizeof(uint32_t)];
     ssize_t bytes;
     while ((bytes = read(fd, buf, sizeof(buf))) > 0) {
-        sem_wait(sem);
+		sem_wait(sem);
 
         uint32_t *length = (uint32_t *)shm_buf;
         char *text = shm_buf + sizeof(uint32_t);
@@ -102,7 +102,9 @@ int main() {
 
 	sem_unlink(SEM_NAME);
 	sem_close(sem);
+	// забить окно в Европу наглухо
 	munmap(shm_buf, SHM_SIZE);
+	// отсоединить имя
 	shm_unlink(SHM_NAME);
 	close(shm);
 

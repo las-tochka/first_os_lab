@@ -23,7 +23,6 @@ static bool is_composite(long long x) {
 }
 
 int main(void) {
-    // Открываем shared memory
     int shm = shm_open(SHM_NAME, O_RDWR, 0);
     if (shm == -1) {
         perror("shm_open");
@@ -56,7 +55,7 @@ int main(void) {
 
         if (bytes == UINT32_MAX) {
             sem_post(sem);
-            break; // сигнал конца данных
+            break;
         }
 
         for (uint32_t i = 0; i < bytes; ++i) {
@@ -68,7 +67,6 @@ int main(void) {
 
                 if (endptr != line) {
                     if (!is_composite(value)) {
-                        // Освобождаем ресурсы перед выходом
                         sem_post(sem);
                         sem_close(sem);
                         munmap(shm_buf, SHM_SIZE);
@@ -92,16 +90,15 @@ int main(void) {
                 if (linelen + 1 < sizeof(line)) {
                     line[linelen++] = c;
                 } else {
-                    linelen = 0; // переполнение строки, сбрасываем
+                    linelen = 0;
                 }
             }
         }
 
         sem_post(sem);
-        usleep(10000); // немного подождём, чтобы не захватывать семафор слишком быстро
+        usleep(10000);
     }
 
-    // Обработка последней незавершённой строки (если есть)
     if (linelen > 0) {
         line[linelen] = '\0';
         char *endptr = NULL;
@@ -119,7 +116,6 @@ int main(void) {
         }
     }
 
-    // Очистка
     sem_close(sem);
     munmap(shm_buf, SHM_SIZE);
     close(shm);
